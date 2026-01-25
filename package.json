@@ -1,0 +1,16 @@
+{
+  "name": "sik-radio-configurator",
+  "version": "1.0.0",
+  "description": "SiK Radio Configurator - Configure telemetry radios from your browser",
+  "scripts": {
+    "build": "cp app/static/css/styles.css public/css/ && cp app/static/js/main.js public/js/",
+    "deploy": "npm run build && npx firebase deploy",
+    "deploy:preview": "npm run build && npx firebase hosting:channel:deploy preview"
+  },
+  "dependencies": {
+    "firebase": "^12.8.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.4.0"
+  }
+}

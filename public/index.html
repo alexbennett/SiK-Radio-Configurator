@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SiK Radio Configurator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="css/styles.css">
+  </head>
+  <body class="bg-body text-body">
+    <div class="app-shell d-flex flex-column min-vh-100">
+      <div class="toast-wrapper position-fixed top-0 start-50 translate-middle-x p-4">
+        <div id="toast" role="status" aria-live="polite"></div>
+      </div>
+      <div id="global-loading" class="global-loading d-none" role="status" aria-live="assertive">
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span class="ms-3">Working...</span>
+      </div>
+      <header class="container-fluid py-4 px-4 px-xl-5 border-bottom border-secondary-subtle">
+        <div class="row g-4 align-items-center">
+          <div class="col">
+            <h1 class="display-6 fw-semibold mb-2">SiK Radio Configurator</h1>
+            <p class="text-secondary mb-0">Connect, inspect, and tune your telemetry radios from any browser.</p>
+          </div>
+          <div class="col-md-auto">
+            <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+              <button type="button" id="theme-toggle" class="btn btn-outline-secondary">
+                <span data-theme-label>Switch Theme</span>
+              </button>
+              <div id="connection-status" class="status-card card bg-body border border-secondary-subtle shadow-sm">
+                <div class="card-body">
+                  <div class="status-label text-uppercase text-secondary fw-semibold small">Status</div>
+                  <div class="status-value fs-3 fw-semibold">Disconnected</div>
+                  <div class="status-detail text-secondary">Port: --</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+      <main class="container-fluid flex-grow-1 py-4 px-4 px-xl-5">
+        <div class="row g-4">
+          <div class="col-xxl-4 col-lg-5">
+            <section class="card h-100 shadow-sm border-secondary-subtle">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent border-secondary-subtle">
+                <h2 class="h4 mb-0">Connection</h2>
+              </div>
+              <div class="card-body">
+                <form id="connection-form" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label d-flex justify-content-between align-items-center" for="port-select">
+                      Selected Port
+                      <button type="button" id="choose-port-button" class="btn btn-outline-secondary btn-sm">Choose Port</button>
+                    </label>
+                    <input type="text" id="port-select" class="form-control" aria-describedby="port-hint" placeholder="No port selected" value="" readonly>
+                    <div class="form-text" id="port-hint">
+                      Authorize access in your browser when prompted to choose a radio.
+                    </div>
+                  </div>
+                  <div class="col-lg-6">
+                    <label class="form-label" for="baud-rate">Baud Rate</label>
+                    <select id="baud-rate" class="form-select">
+                      <option value="4800">4800</option>
+                      <option value="9600">9600</option>
+                      <option value="19200">19200</option>
+                      <option value="38400">38400</option>
+                      <option value="57600" selected>57600</option>
+                      <option value="115200">115200</option>
+                      <option value="230400">230400</option>
+                      <option value="460800">460800</option>
+                      <option value="921600">921600</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                      <button type="submit" id="connect-button" class="btn btn-primary flex-fill flex-lg-grow-0">Connect</button>
+                      <button type="button" id="disconnect-button" class="btn btn-outline-danger flex-fill flex-lg-grow-0" disabled>Disconnect</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </section>
+          </div>
+          <div class="col-xxl-8 col-lg-7">
+            <section class="card h-100 shadow-sm border-secondary-subtle" id="info-card">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent border-secondary-subtle">
+                <h2 class="h4 mb-0">Radio Information</h2>
+                <button type="button" id="refresh-info" class="btn btn-outline-secondary btn-sm" disabled>Refresh</button>
+              </div>
+              <div class="card-body">
+                <div class="row g-3" id="info-columns">
+                  <div class="col-sm-6 col-xxl-3">
+                    <h3 class="h6 text-secondary text-uppercase mb-2">Firmware</h3>
+                    <pre id="firmware-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                  </div>
+                  <div class="col-sm-6 col-xxl-3">
+                    <h3 class="h6 text-secondary text-uppercase mb-2">Hardware</h3>
+                    <pre id="hardware-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                  </div>
+                  <div class="col-sm-6 col-xxl-3">
+                    <h3 class="h6 text-secondary text-uppercase mb-2">Registers</h3>
+                    <pre id="register-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                  </div>
+                  <div class="col-sm-6 col-xxl-3">
+                    <h3 class="h6 text-secondary text-uppercase mb-2">Frequencies</h3>
+                    <pre id="frequency-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="col-12">
+            <section class="card shadow-sm border-secondary-subtle" id="parameters-card">
+              <div class="card-header bg-transparent border-secondary-subtle">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div>
+                    <h2 class="h4 mb-1">Parameters</h2>
+                    <p class="mb-0 text-secondary">Edit values and commit changes with Save to Flash.</p>
+                  </div>
+                  <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="refresh-parameters" class="btn btn-outline-secondary btn-sm" disabled>Reload</button>
+                    <button type="button" id="save-parameters" class="btn btn-primary btn-sm" disabled>Save to Flash</button>
+                  </div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive app-table-wrapper">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Current Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="parameter-table-body">
+                      <tr>
+                        <td colspan="3" class="text-center text-secondary py-4">Connect to a radio to load parameters.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="col-12">
+            <section class="card shadow-sm border-secondary-subtle" id="configurations-card">
+              <div class="card-header bg-transparent border-secondary-subtle">
+                <h2 class="h4 mb-0">Configurations</h2>
+              </div>
+              <div class="card-body">
+                <div class="row g-3 align-items-end">
+                  <div class="col-lg-4">
+                    <label class="form-label" for="config-name">Configuration Name</label>
+                    <input type="text" id="config-name" class="form-control" placeholder="My Field Setup">
+                  </div>
+                  <div class="col-lg-4">
+                    <label class="form-label" for="config-select">Saved Configurations</label>
+                    <select id="config-select" class="form-select" size="4" aria-label="Saved configurations"></select>
+                  </div>
+                  <div class="col-lg-4">
+                    <div class="d-flex flex-wrap gap-2">
+                      <button type="button" id="save-config" class="btn btn-primary flex-fill">Save to Cache</button>
+                      <button type="button" id="save-config-new" class="btn btn-outline-primary flex-fill">Save As New</button>
+                      <button type="button" id="load-config" class="btn btn-outline-secondary flex-fill" disabled>Load to Radio</button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                      <button type="button" id="download-config" class="btn btn-outline-primary flex-fill" disabled>Download JSON</button>
+                      <button type="button" id="upload-config" class="btn btn-outline-secondary flex-fill">Upload JSON</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                  <button type="button" id="delete-config" class="btn btn-outline-danger btn-sm" disabled>Delete Selected</button>
+                  <span class="text-secondary small">Configurations are stored locally in this browser.</span>
+                </div>
+                <input type="file" id="upload-config-input" accept="application/json" class="d-none">
+              </div>
+            </section>
+          </div>
+          <div class="col-12">
+            <section class="card shadow-sm border-secondary-subtle" id="actions-card">
+              <div class="card-header bg-transparent border-secondary-subtle">
+                <h2 class="h4 mb-0">Utilities</h2>
+              </div>
+              <div class="card-body">
+                <div class="row g-4">
+                  <div class="col-lg-4">
+                    <div class="utility-tile rounded-4 border border-secondary-subtle h-100 p-4">
+                      <h3 class="h5 mb-2">Radio Reboot</h3>
+                      <p class="text-secondary mb-4">Reboot the radio to apply pending changes on both ends.</p>
+                      <button type="button" id="reboot-button" class="btn btn-outline-danger" disabled>Reboot Radio</button>
+                    </div>
+                  </div>
+                  <div class="col-lg-8">
+                    <div class="utility-tile rounded-4 border border-secondary-subtle h-100 p-4">
+                      <h3 class="h5 mb-2">Raw Command</h3>
+                      <p class="text-secondary mb-4">Send an advanced AT command and review the raw response.</p>
+                      <form id="raw-command-form" class="d-flex flex-column gap-3">
+                        <div class="row g-3">
+                          <div class="col-md-6">
+                            <label class="form-label" for="raw-command-select">Command Preset</label>
+                            <select id="raw-command-select" class="form-select" disabled>
+                              <option>Loading presets...</option>
+                            </select>
+                            <div class="form-text mt-2" id="raw-command-description">Select a command to view its description.</div>
+                          </div>
+                          <div class="col-md-6">
+                            <label class="form-label" for="raw-command">Command</label>
+                            <div class="raw-input-row">
+                              <input type="text" id="raw-command" class="form-control" placeholder="ATI5" autocomplete="off" disabled>
+                              <button type="submit" class="btn btn-outline-secondary" id="raw-command-submit" disabled>Send</button>
+                            </div>
+                          </div>
+                        </div>
+                        <pre id="raw-command-response" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">Response will appear here.</pre>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="container-fluid py-4 px-4 px-xl-5 border-top border-secondary-subtle text-center text-secondary small">
+        <p class="mb-2">Need both radios updated? Configure each one in turn, save to flash, and reboot.</p>
+        <p class="mb-2">
+          <a href="https://www.venmo.com/u/alexbennett-b16" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Buy me a coffee 🍵</a>
+        </p>
+        <p class="mb-0">
+          © 2026 <a href="https://b16.dev" target="_blank" rel="noopener noreferrer">B16 LLC</a> · 
+          <a href="https://github.com/alexbennett/SiK-Radio-Configurator" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a>
+        </p>
+      </footer>
+    </div>
+    <div id="activity-log" class="activity-log">
+      <div class="activity-log-header">
+        <span class="activity-log-title">Activity Log</span>
+        <div class="activity-log-actions">
+          <button type="button" class="btn btn-link btn-sm" id="activity-log-clear">Clear</button>
+          <button type="button" class="btn btn-link btn-sm" id="activity-log-toggle" aria-expanded="true">Minimize</button>
+        </div>
+      </div>
+      <div class="activity-log-body" id="activity-log-body">
+        <ul class="activity-log-list" id="activity-log-list"></ul>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/main.js" defer></script>
+  </body>
+</html>
