@@ -20,8 +20,14 @@ echo "   📄 Copying styles.css..."
 cp "$FLASK_STATIC/css/styles.css" "$PUBLIC_DIR/css/styles.css"
 
 # Sync JavaScript
-echo "   📄 Copying main.js..."
-cp "$FLASK_STATIC/js/main.js" "$PUBLIC_DIR/js/main.js"
+echo "   📄 Syncing JavaScript..."
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --delete "$FLASK_STATIC/js/" "$PUBLIC_DIR/js/"
+else
+  rm -rf "$PUBLIC_DIR/js"
+  mkdir -p "$PUBLIC_DIR/js"
+  cp -R "$FLASK_STATIC/js/." "$PUBLIC_DIR/js/"
+fi
 
 # Sync HTML (convert Jinja2 paths to relative paths)
 echo "   📄 Syncing index.html..."
