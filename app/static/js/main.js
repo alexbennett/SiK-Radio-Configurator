@@ -1,23 +1,197 @@
 "use strict";
 
 document.addEventListener("DOMContentLoaded", () => {
+  // ============================================
+  // Debug Mode Configuration
+  // ============================================
+  const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
+  
+  const SIMULATED_DATA = {
+    status: {
+      connected: false,
+      port: "Simulated Radio (Demo)",
+      baudrate: 57600,
+      connected_at: null,
+    },
+    info: {
+      firmware: ["SiK 2.2 on HM-TRP", "Built: Jan 15 2026", "Bootloader: 1.1"],
+      hardware: ["HopeRF HM-TRP", "Si1000 Rev B", "8051 Core @ 24MHz"],
+      registers: ["S0:FORMAT=25", "S1:SERIAL_SPEED=64", "S2:AIR_SPEED=64", "S3:NETID=25"],
+      board_frequencies: ["Min Freq: 915000", "Max Freq: 928000", "Num Channels: 50"],
+    },
+    parameters: [
+      { code: "S0", value: "25", raw: "FORMAT=25", human_readable: "AT Command Mode", definition: { name: "FORMAT", description: "Serial protocol format (fixed AT command interface)", value_type: "int", min: 0, max: 255 } },
+      { code: "S1", value: "64", raw: "SERIAL_SPEED=64", human_readable: "57600 bps", definition: { name: "SERIAL_SPEED", description: "Serial port baud rate encoding", value_type: "enum", choices: [{ value: "1", label: "1200" }, { value: "2", label: "2400" }, { value: "4", label: "4800" }, { value: "9", label: "9600" }, { value: "19", label: "19200" }, { value: "38", label: "38400" }, { value: "57", label: "57600" }, { value: "64", label: "57600 (alt)" }, { value: "115", label: "115200" }, { value: "230", label: "230400" }] } },
+      { code: "S2", value: "64", raw: "AIR_SPEED=64", human_readable: "64 kbps", definition: { name: "AIR_SPEED", description: "Over-the-air data rate in kbps", value_type: "enum", choices: [{ value: "2", label: "2 kbps" }, { value: "4", label: "4 kbps" }, { value: "8", label: "8 kbps" }, { value: "16", label: "16 kbps" }, { value: "19", label: "19 kbps" }, { value: "24", label: "24 kbps" }, { value: "32", label: "32 kbps" }, { value: "48", label: "48 kbps" }, { value: "64", label: "64 kbps" }, { value: "96", label: "96 kbps" }, { value: "128", label: "128 kbps" }, { value: "192", label: "192 kbps" }, { value: "250", label: "250 kbps" }] } },
+      { code: "S3", value: "25", raw: "NETID=25", human_readable: "Network 25", definition: { name: "NETID", description: "Network ID (must match on both radios)", value_type: "int", min: 0, max: 499 } },
+      { code: "S4", value: "20", raw: "TXPOWER=20", human_readable: "20 dBm", definition: { name: "TXPOWER", description: "Transmit power in dBm (0-30)", value_type: "int", min: 0, max: 30, unit: "dBm" } },
+      { code: "S5", value: "1", raw: "ECC=1", human_readable: "Enabled", definition: { name: "ECC", description: "Enable error correcting code for improved reliability", value_type: "bool" } },
+      { code: "S6", value: "1", raw: "MAVLINK=1", human_readable: "Enabled", definition: { name: "MAVLINK", description: "Enable MAVLink framing mode for optimized telemetry", value_type: "bool" } },
+      { code: "S7", value: "0", raw: "OPPRESEND=0", human_readable: "Disabled", definition: { name: "OPPRESEND", description: "Opportunistic resend of missed packets", value_type: "bool" } },
+      { code: "S8", value: "915000", raw: "MIN_FREQ=915000", human_readable: "915.000 MHz", definition: { name: "MIN_FREQ", description: "Minimum frequency in kHz", value_type: "int", min: 895000, max: 935000, unit: "kHz" } },
+      { code: "S9", value: "928000", raw: "MAX_FREQ=928000", human_readable: "928.000 MHz", definition: { name: "MAX_FREQ", description: "Maximum frequency in kHz", value_type: "int", min: 895000, max: 935000, unit: "kHz" } },
+      { code: "S10", value: "50", raw: "NUM_CHANNELS=50", human_readable: "50 channels", definition: { name: "NUM_CHANNELS", description: "Number of frequency hopping channels", value_type: "int", min: 1, max: 50 } },
+      { code: "S11", value: "100", raw: "DUTY_CYCLE=100", human_readable: "100%", definition: { name: "DUTY_CYCLE", description: "Transmit duty cycle percentage", value_type: "int", min: 10, max: 100, unit: "%" } },
+      { code: "S12", value: "0", raw: "LBT_RSSI=0", human_readable: "Disabled", definition: { name: "LBT_RSSI", description: "Listen-before-talk RSSI threshold (0=disabled)", value_type: "int", min: 0, max: 255 } },
+      { code: "S13", value: "0", raw: "MANCHESTER=0", human_readable: "Disabled", definition: { name: "MANCHESTER", description: "Enable Manchester encoding", value_type: "bool" } },
+      { code: "S14", value: "1", raw: "RTSCTS=1", human_readable: "Enabled", definition: { name: "RTSCTS", description: "Enable hardware flow control (RTS/CTS)", value_type: "bool" } },
+      { code: "S15", value: "131", raw: "MAX_WINDOW=131", human_readable: "131 ms", definition: { name: "MAX_WINDOW", description: "Maximum transmit window in milliseconds", value_type: "int", min: 20, max: 400, unit: "ms" } },
+    ],
+    rawCommands: {
+      "ATI": ["SiK 2.2 on HM-TRP", "OK"],
+      "ATI2": ["HopeRF HM-TRP", "Si1000 Rev B", "OK"],
+      "ATI3": ["S0:FORMAT", "S1:SERIAL_SPEED", "S2:AIR_SPEED", "S3:NETID", "S4:TXPOWER", "OK"],
+      "ATI4": ["915000 to 928000 kHz", "Num channels: 50", "OK"],
+      "ATI5": ["S0:FORMAT=25", "S1:SERIAL_SPEED=64", "S2:AIR_SPEED=64", "S3:NETID=25", "S4:TXPOWER=20", "S5:ECC=1", "OK"],
+      "ATI6": ["Vcc: 3.3V", "Temp: 28C", "OK"],
+      "ATI7": ["EEPROM: 0x1234ABCD", "Flash: 0xDEADBEEF", "OK"],
+      "ATI9": ["Bootloader: 1.1", "OK"],
+      "AT&V": ["SERIAL_SPEED=57600", "AIR_SPEED=64", "NETID=25", "TXPOWER=20", "ECC=1", "OK"],
+      "AT&W": ["OK"],
+      "ATZ": ["OK"],
+      "ATO": ["OK"],
+    },
+  };
+
+  class DebugTransport {
+    constructor() {
+      this.connected = false;
+      this.connectedAt = null;
+      this.parameters = JSON.parse(JSON.stringify(SIMULATED_DATA.parameters));
+    }
+
+    handles(url) {
+      return DEBUG_MODE && url.startsWith("/api/");
+    }
+
+    async handle(url, options = {}) {
+      const method = (options.method || "GET").toUpperCase();
+      const path = url.split("?")[0];
+      
+      // Simulate network delay
+      await this._delay(150 + Math.random() * 300);
+
+      if (path === "/api/status") {
+        return { status: this._getStatus() };
+      }
+
+      if (path === "/api/ports") {
+        return { ports: [{ device: "debug://simulated-radio", description: "Simulated Radio (Demo)" }] };
+      }
+
+      if (path === "/api/connect" && method === "POST") {
+        this.connected = true;
+        this.connectedAt = Date.now() / 1000;
+        return { status: this._getStatus() };
+      }
+
+      if (path === "/api/disconnect" && method === "POST") {
+        this.connected = false;
+        this.connectedAt = null;
+        return { status: this._getStatus() };
+      }
+
+      if (path === "/api/info" && this.connected) {
+        return { info: SIMULATED_DATA.info };
+      }
+
+      if (path === "/api/settings" && method === "GET" && this.connected) {
+        return { parameters: this.parameters };
+      }
+
+      if (path === "/api/settings/save" && method === "POST" && this.connected) {
+        return { status: "saved" };
+      }
+
+      const paramMatch = path.match(/^\/api\/settings\/([^/]+)$/);
+      if (paramMatch && this.connected) {
+        const code = decodeURIComponent(paramMatch[1]).toUpperCase();
+        const normalizedCode = code.startsWith("S") ? code : `S${code}`;
+        
+        if (method === "GET") {
+          const param = this.parameters.find(p => p.code === normalizedCode);
+          if (param) return { parameter: param };
+          throw new Error(`Unknown parameter: ${normalizedCode}`);
+        }
+        
+        if (method === "POST") {
+          const body = options.body ? JSON.parse(options.body) : {};
+          const param = this.parameters.find(p => p.code === normalizedCode);
+          if (param) {
+            param.value = String(body.value);
+            param.raw = `${param.definition.name}=${body.value}`;
+            return { parameter: param };
+          }
+          throw new Error(`Unknown parameter: ${normalizedCode}`);
+        }
+      }
+
+      if (path === "/api/reboot" && method === "POST" && this.connected) {
+        this.connected = false;
+        this.connectedAt = null;
+        return { status: "rebooting" };
+      }
+
+      if (path === "/api/raw" && method === "POST" && this.connected) {
+        const body = options.body ? JSON.parse(options.body) : {};
+        const cmd = (body.command || "").toUpperCase().trim();
+        const response = SIMULATED_DATA.rawCommands[cmd] || [`Unknown command: ${cmd}`, "ERROR"];
+        return { response };
+      }
+
+      if (path === "/api/parameter-definitions") {
+        const definitions = {};
+        SIMULATED_DATA.parameters.forEach(p => {
+          definitions[p.code] = p.definition;
+        });
+        return { definitions };
+      }
+
+      if (!this.connected && ["/api/info", "/api/settings", "/api/raw", "/api/reboot"].some(p => path.startsWith(p))) {
+        throw new Error("No radio connected (Demo Mode)");
+      }
+
+      throw new Error(`Debug mode: Unhandled request ${method} ${path}`);
+    }
+
+    _getStatus() {
+      return {
+        connected: this.connected,
+        port: this.connected ? SIMULATED_DATA.status.port : null,
+        baudrate: this.connected ? SIMULATED_DATA.status.baudrate : null,
+        connected_at: this.connectedAt,
+      };
+    }
+
+    _delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+  }
+
+  const debugTransport = DEBUG_MODE ? new DebugTransport() : null;
+
+  if (DEBUG_MODE) {
+    console.log("%c🎮 DEMO MODE ENABLED", "color: #635bff; font-size: 16px; font-weight: bold;");
+    console.log("Simulated radio connection is available. All API calls will return mock data.");
+    console.log("Remove ?debug from URL to exit demo mode.");
+  }
+
+  // ============================================
+  // Element References
+  // ============================================
   const els = {
     toast: document.getElementById("toast"),
     statusCard: document.getElementById("connection-status"),
     statusValue: document.querySelector("#connection-status .status-value"),
-    statusDetail: document.querySelector("#connection-status .status-detail"),
     portSelect: document.getElementById("port-select"),
     portHint: document.getElementById("port-hint"),
     choosePortButton: document.getElementById("choose-port-button"),
     baudRate: document.getElementById("baud-rate"),
     connectForm: document.getElementById("connection-form"),
     connectButton: document.getElementById("connect-button"),
-    disconnectButton: document.getElementById("disconnect-button"),
     infoRefresh: document.getElementById("refresh-info"),
     firmwareInfo: document.getElementById("firmware-info"),
     hardwareInfo: document.getElementById("hardware-info"),
-    registerInfo: document.getElementById("register-info"),
-    frequencyInfo: document.getElementById("frequency-info"),
     parameterTableBody: document.getElementById("parameter-table-body"),
     parametersRefresh: document.getElementById("refresh-parameters"),
     parametersSave: document.getElementById("save-parameters"),
@@ -29,11 +203,12 @@ document.addEventListener("DOMContentLoaded", () => {
     rawSelect: document.getElementById("raw-command-select"),
     rawDescription: document.getElementById("raw-command-description"),
     globalLoading: document.getElementById("global-loading"),
-    configName: document.getElementById("config-name"),
     configSelect: document.getElementById("config-select"),
     configSave: document.getElementById("save-config"),
-    configSaveNew: document.getElementById("save-config-new"),
-    configLoad: document.getElementById("load-config"),
+    configSaveAs: document.getElementById("save-config-as"),
+    configSaveAsModal: document.getElementById("config-saveas-modal"),
+    configSaveAsName: document.getElementById("config-saveas-name"),
+    configSaveAsConfirm: document.getElementById("config-saveas-confirm"),
     configDelete: document.getElementById("delete-config"),
     configDownload: document.getElementById("download-config"),
     configUpload: document.getElementById("upload-config"),
@@ -44,11 +219,19 @@ document.addEventListener("DOMContentLoaded", () => {
     logList: document.getElementById("activity-log-list"),
     logToggle: document.getElementById("activity-log-toggle"),
     logClear: document.getElementById("activity-log-clear"),
+    debugBanner: document.getElementById("debug-banner"),
   };
+
+  // Show debug banner if in debug mode
+  if (DEBUG_MODE && els.debugBanner) {
+    els.debugBanner.classList.remove("d-none");
+  }
 
   const state = {
     connected: false,
     parameters: [],
+    radioParameters: {},
+    stagedParameters: {},
     cachedConfigs: [],
     overlayClaims: 0,
     selectedConfigId: null,
@@ -217,15 +400,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updatePortDisplay() {
-    if (!els.portSelect) {
+    if (!els.choosePortButton) {
       return;
     }
     const label = state.selectedPort ? state.selectedPort.label : "";
-    els.portSelect.value = label;
+    els.choosePortButton.textContent = label ? `Port: ${label}` : "Choose Port";
+    els.choosePortButton.title = label
+      ? `Selected port: ${label}`
+      : "Choose a port";
     if (state.selectedPort && state.selectedPort.value) {
-      els.portSelect.dataset.portId = state.selectedPort.value;
+      els.choosePortButton.dataset.portId = state.selectedPort.value;
     } else {
-      delete els.portSelect.dataset.portId;
+      delete els.choosePortButton.dataset.portId;
     }
   }
 
@@ -299,6 +485,182 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
+  function normalizeParamValue(value) {
+    return value != null ? String(value) : "";
+  }
+
+  function setRadioSnapshot(parameters) {
+    state.radioParameters = {};
+    if (!Array.isArray(parameters)) {
+      return;
+    }
+    parameters.forEach((param) => {
+      if (param && typeof param === "object" && typeof param.code === "string") {
+        state.radioParameters[param.code] = normalizeParamValue(param.value);
+      }
+    });
+  }
+
+  function setRadioValue(code, value) {
+    if (!code) {
+      return;
+    }
+    if (!state.radioParameters || typeof state.radioParameters !== "object") {
+      state.radioParameters = {};
+    }
+    state.radioParameters[code] = normalizeParamValue(value);
+  }
+
+  function getRadioValue(code) {
+    if (!code || !state.radioParameters) {
+      return "";
+    }
+    return state.radioParameters[code] ?? "";
+  }
+
+  function getStagedValue(code) {
+    if (!code || !state.stagedParameters) {
+      return null;
+    }
+    if (!Object.prototype.hasOwnProperty.call(state.stagedParameters, code)) {
+      return null;
+    }
+    return state.stagedParameters[code];
+  }
+
+  function setStagedValue(code, value) {
+    if (!code) {
+      return;
+    }
+    if (!state.stagedParameters || typeof state.stagedParameters !== "object") {
+      state.stagedParameters = {};
+    }
+    if (value == null) {
+      delete state.stagedParameters[code];
+      return;
+    }
+    const normalized = normalizeParamValue(value);
+    const radioValue = getRadioValue(code);
+    if (normalized === radioValue) {
+      delete state.stagedParameters[code];
+      return;
+    }
+    state.stagedParameters[code] = normalized;
+  }
+
+  function reconcileStagedWithRadio() {
+    if (!state.stagedParameters || typeof state.stagedParameters !== "object") {
+      return;
+    }
+    Object.keys(state.stagedParameters).forEach((code) => {
+      const stagedValue = state.stagedParameters[code];
+      if (stagedValue === getRadioValue(code)) {
+        delete state.stagedParameters[code];
+      }
+    });
+  }
+
+  function isParameterUnsaved(code) {
+    if (!state.parametersLoaded) {
+      return false;
+    }
+    const stagedValue = getStagedValue(code);
+    if (stagedValue == null) {
+      return false;
+    }
+    return stagedValue !== getRadioValue(code);
+  }
+
+  function setParameterInputValue(input, value) {
+    if (!input) {
+      return;
+    }
+    const normalized = normalizeParamValue(value);
+    if (input.tagName === "SELECT") {
+      const select = input;
+      let option = Array.from(select.options).find(
+        (opt) => opt.value === normalized
+      );
+      if (!option) {
+        option = document.createElement("option");
+        option.value = normalized;
+        option.textContent = `Current: ${normalized || "(empty)"}`;
+        select.appendChild(option);
+      }
+      select.value = normalized;
+      return;
+    }
+    input.value = normalized;
+  }
+
+  function updateUnsavedBadge(row, unsaved) {
+    if (!row) {
+      return;
+    }
+    const valueDisplay = row.querySelector(".value-display");
+    if (!valueDisplay) {
+      return;
+    }
+    const existing = valueDisplay.querySelector(".unsaved-badge");
+    if (unsaved) {
+      if (existing) {
+        return;
+      }
+      const badge = document.createElement("span");
+      badge.className = "unsaved-badge";
+      badge.textContent = "Unsaved";
+      valueDisplay.appendChild(badge);
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
+  function syncRowUnsavedState(row, parameter, options = {}) {
+    if (!row) {
+      return;
+    }
+    const code = row.dataset.code;
+    if (!code) {
+      return;
+    }
+    const unsaved = isParameterUnsaved(code);
+    row.classList.toggle("unsaved", unsaved);
+    updateUnsavedBadge(row, unsaved);
+    if (options.preserveInput) {
+      return;
+    }
+    const input = row.querySelector(".param-input");
+    if (!input) {
+      return;
+    }
+    if (row.classList.contains("editing") && !options.forceInput) {
+      return;
+    }
+    const stagedValue = getStagedValue(code);
+    const fallback = parameter
+      ? normalizeParamValue(parameter.value)
+      : getRadioValue(code);
+    const desired = stagedValue != null ? stagedValue : fallback;
+    setParameterInputValue(input, desired);
+  }
+
+  function refreshParameterRowStates(options = {}) {
+    if (!els.parameterTableBody) {
+      return;
+    }
+    const rows = els.parameterTableBody.querySelectorAll("tr.parameter-row");
+    rows.forEach((row) => {
+      const code = row.dataset.code;
+      if (!code) {
+        return;
+      }
+      const parameter = getParameterByCode(code);
+      if (parameter) {
+        syncRowUnsavedState(row, parameter, options);
+      }
+    });
+  }
+
   function setRowEditing(row, editing) {
     if (!row) {
       return;
@@ -322,6 +684,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (parameter) {
         updateParameterRow(row, parameter);
       }
+      const baseValue =
+        getStagedValue(code) ??
+        (parameter ? normalizeParamValue(parameter.value) : "");
+      row.dataset.originalValue = baseValue;
       row.classList.add("editing");
       state.activeParameterCode = code;
       const input = row.querySelector(".param-input");
@@ -354,6 +720,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (state.activeParameterCode === code) {
         state.activeParameterCode = null;
       }
+      delete row.dataset.originalValue;
     }
   }
 
@@ -472,7 +839,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function setSelectedConfig(configId) {
     state.selectedConfigId = configId;
-    syncConfigNameInput();
+    stageSelectedConfiguration();
     updateConfigButtonsState();
   }
 
@@ -535,25 +902,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function syncConfigNameInput() {
-    if (!els.configName) {
+  function stageSelectedConfiguration() {
+    const config = getSelectedConfig();
+    if (!config) {
       return;
     }
-    const config = getSelectedConfig();
-    if (config) {
-      els.configName.value = config.name;
-    } else {
-      els.configName.value = "";
-    }
+    state.stagedParameters = {};
+    const entries = Object.entries(config.parameters || {});
+    entries.forEach(([code, value]) => {
+      if (typeof code !== "string") {
+        return;
+      }
+      state.stagedParameters[code] = normalizeParamValue(value);
+    });
+    reconcileStagedWithRadio();
+    refreshParameterRowStates();
   }
 
   function updateConfigButtonsState() {
     const hasConfig = Boolean(getSelectedConfig());
     const hasParameters =
       Array.isArray(state.parameters) && state.parameters.length > 0;
-    if (els.configLoad) {
-      els.configLoad.disabled = !hasConfig || !state.connected;
-    }
     if (els.configDelete) {
       els.configDelete.disabled = !hasConfig;
     }
@@ -561,10 +930,10 @@ document.addEventListener("DOMContentLoaded", () => {
       els.configDownload.disabled = !hasConfig;
     }
     if (els.configSave) {
-      els.configSave.disabled = !hasParameters;
+      els.configSave.disabled = !hasParameters || !hasConfig;
     }
-    if (els.configSaveNew) {
-      els.configSaveNew.disabled = !hasParameters;
+    if (els.configSaveAs) {
+      els.configSaveAs.disabled = !hasParameters;
     }
   }
 
@@ -719,12 +1088,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     const label = els.themeToggle.querySelector("[data-theme-label]");
-    const nextLabel = theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode";
+    const nextLabel = theme === "dark" ? "Light Mode" : "Dark Mode";
     if (label) {
       label.textContent = nextLabel;
     } else {
       els.themeToggle.textContent = nextLabel;
     }
+    els.themeToggle.setAttribute("aria-label", `Switch to ${nextLabel}`);
   }
 
   function applyTheme(theme) {
@@ -1082,7 +1452,7 @@ document.addEventListener("DOMContentLoaded", () => {
       this._ensureConnected();
       const response = await this._executeCommand("AT&W");
       if (!this._didCommandSucceed(response)) {
-        throw new Error("Failed to write parameters to flash.");
+        throw new Error("Failed to write parameters to radio.");
       }
     }
 
@@ -1460,7 +1830,18 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePortHintText();
   }
 
+  if (DEBUG_MODE) {
+    logEvent(
+      "🎮 DEMO MODE: Simulated radio available. Connect to explore all features.",
+      "warning"
+    );
+  }
+
   async function fetchJSON(url, options = {}) {
+    // Debug transport takes priority
+    if (debugTransport && debugTransport.handles(url, options)) {
+      return debugTransport.handle(url, options);
+    }
     if (webSerialTransport && webSerialTransport.handles(url, options)) {
       return webSerialTransport.handle(url, options);
     }
@@ -1474,16 +1855,12 @@ document.addEventListener("DOMContentLoaded", () => {
     els.statusValue.textContent = connected ? "Connected" : "Disconnected";
 
     if (connected) {
-      const port = status.port ?? "?";
-      const baud = status.baudrate ?? "?";
-      els.statusDetail.textContent = `${port} @ ${baud} baud`;
       if (state.usingWebSerial && status.port) {
         alignSelectedPort(getSelectedPort(), status.port);
       } else if (!state.usingWebSerial && status.port) {
         alignSelectedPort(status.port, status.port);
       }
     } else {
-      els.statusDetail.textContent = "Port: --";
       state.parametersLoaded = false;
       state.loadingParameters = false;
     }
@@ -1500,10 +1877,18 @@ document.addEventListener("DOMContentLoaded", () => {
   function toggleControls(connected) {
     if (els.connectButton) {
       const hasPort = Boolean(getSelectedPort());
-      els.connectButton.disabled = connected || !hasPort;
-    }
-    if (els.disconnectButton) {
-      els.disconnectButton.disabled = !connected;
+      // Dynamic connect/disconnect button
+      if (connected) {
+        els.connectButton.textContent = "Disconnect";
+        els.connectButton.classList.remove("btn-primary");
+        els.connectButton.classList.add("btn-outline-danger");
+        els.connectButton.disabled = false;
+      } else {
+        els.connectButton.textContent = "Connect";
+        els.connectButton.classList.remove("btn-outline-danger");
+        els.connectButton.classList.add("btn-primary");
+        els.connectButton.disabled = !hasPort;
+      }
     }
     if (els.choosePortButton) {
       els.choosePortButton.disabled = connected;
@@ -1540,8 +1925,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function clearInfoPanels() {
     els.firmwareInfo.textContent = "--";
     els.hardwareInfo.textContent = "--";
-    els.registerInfo.textContent = "--";
-    els.frequencyInfo.textContent = "--";
   }
 
   function clearParametersTable(message = "Connect to a radio to load parameters.") {
@@ -1554,6 +1937,7 @@ document.addEventListener("DOMContentLoaded", () => {
     state.parametersLoaded = false;
     state.loadingParameters = false;
     state.activeParameterCode = null;
+    state.radioParameters = {};
     updateConfigButtonsState();
     refreshRawCommandOptions();
   }
@@ -1605,6 +1989,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function choosePort() {
+    // In demo mode, auto-select the simulated port
+    if (DEBUG_MODE) {
+      const simulatedPort = {
+        value: "debug://simulated-radio",
+        label: "Simulated Radio (Demo)",
+      };
+      setSelectedPort(simulatedPort);
+      showToast("Demo mode: Simulated radio selected.");
+      logEvent("Demo mode: Selected simulated radio port.", "success");
+      return;
+    }
+
     if (state.usingWebSerial && webSerialTransport) {
       try {
         const record = await webSerialTransport.promptPortSelection();
@@ -1766,7 +2162,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const { status } = await fetchJSON("/api/disconnect", { method: "POST" });
           return status;
         },
-        { button: els.disconnectButton, label: "Disconnecting...", overlay: true }
+        { button: els.connectButton, label: "Disconnecting...", overlay: true }
       );
       updateStatusCard(statusResponse);
       clearInfoPanels();
@@ -1793,8 +2189,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const fallback = (lines) => (Array.isArray(lines) && lines.length ? lines.join("\n") : "--");
     els.firmwareInfo.textContent = fallback(info.firmware);
     els.hardwareInfo.textContent = fallback(info.hardware);
-    els.registerInfo.textContent = fallback(info.registers);
-    els.frequencyInfo.textContent = fallback(info.board_frequencies);
   }
 
   async function loadInfo(options = {}) {
@@ -1832,6 +2226,8 @@ document.addEventListener("DOMContentLoaded", () => {
           const { parameters } = await fetchJSON("/api/settings");
           state.parameters = parameters;
           state.parametersLoaded = true;
+          setRadioSnapshot(parameters);
+          reconcileStagedWithRadio();
           renderParameters(parameters);
           logEvent(`Loaded ${parameters.length} parameters.`, "success");
         },
@@ -1907,11 +2303,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       currentCell.appendChild(valueDisplay);
 
-      const editHint = document.createElement("div");
-      editHint.className = "edit-hint";
-      editHint.textContent = "Click row to edit";
-      currentCell.appendChild(editHint);
-
       const editor = document.createElement("div");
       editor.className = "parameter-editor";
       const input = buildParameterInput(param);
@@ -1943,6 +2334,7 @@ document.addEventListener("DOMContentLoaded", () => {
       row.appendChild(currentCell);
 
       els.parameterTableBody.appendChild(row);
+      syncRowUnsavedState(row, param, { forceInput: true });
 
       if (param.code === previousActive) {
         rowToActivate = row;
@@ -2049,6 +2441,8 @@ document.addEventListener("DOMContentLoaded", () => {
         { button: triggerButton, label: "Applying..." }
       );
       if (parameter) {
+        setRadioValue(parameter.code, parameter.value);
+        setStagedValue(parameter.code, null);
         updateParameterRow(row, parameter);
         showToast(`Updated ${parameter.code} -> ${parameter.value}`);
         logEvent(`Parameter ${parameter.code} updated to ${parameter.value}`, "success");
@@ -2086,25 +2480,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     const input = row.querySelector(".param-input");
-    if (input) {
-      if (input.tagName === "SELECT") {
-        const select = input;
-        let option = Array.from(select.options).find(
-          (opt) => opt.value === String(parameter.value ?? "")
-        );
-        if (!option) {
-          option = document.createElement("option");
-          option.value = parameter.value ?? "";
-          option.textContent = `Current: ${parameter.value ?? ""}`;
-          select.appendChild(option);
-        }
-        select.value = String(parameter.value ?? "");
-      } else {
-        input.value = parameter.value != null ? String(parameter.value) : "";
-      }
-      if (!row.classList.contains("editing")) {
-        input.disabled = true;
-      }
+    if (input && !row.classList.contains("editing")) {
+      input.disabled = true;
     }
     if (Array.isArray(state.parameters)) {
       const index = state.parameters.findIndex(
@@ -2119,6 +2496,46 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
     }
+    syncRowUnsavedState(row, parameter);
+  }
+
+  function restoreRowOriginalValue(row) {
+    if (!row) {
+      return;
+    }
+    const code = row.dataset.code;
+    if (!code) {
+      return;
+    }
+    if (Object.prototype.hasOwnProperty.call(row.dataset, "originalValue")) {
+      setStagedValue(code, row.dataset.originalValue);
+    } else {
+      setStagedValue(code, null);
+    }
+    const parameter = getParameterByCode(code);
+    if (parameter) {
+      syncRowUnsavedState(row, parameter, { forceInput: true });
+    }
+  }
+
+  function handleParameterInputChange(event) {
+    const input = event.target.closest(".param-input");
+    if (!input) {
+      return;
+    }
+    const row = input.closest("tr.parameter-row");
+    if (!row) {
+      return;
+    }
+    const code = row.dataset.code;
+    if (!code) {
+      return;
+    }
+    setStagedValue(code, input.value);
+    const parameter = getParameterByCode(code);
+    if (parameter) {
+      syncRowUnsavedState(row, parameter, { preserveInput: true });
+    }
   }
 
   async function saveParameters() {
@@ -2126,15 +2543,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     try {
-      logEvent("Saving parameters to flash...", "info");
+      logEvent("Saving parameters to radio...", "info");
       await runWithLoading(
         async () => {
           await fetchJSON("/api/settings/save", { method: "POST" });
         },
         { button: els.parametersSave, label: "Saving...", overlay: true }
       );
-      showToast("Parameters saved to flash.");
-      logEvent("Parameters saved to flash.", "success");
+      showToast("Parameters saved to radio.");
+      logEvent("Parameters saved to radio.", "success");
     } catch (error) {
       logEvent(
         `Failed to save parameters: ${error instanceof Error ? error.message : String(error)}`,
@@ -2224,41 +2641,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function saveConfiguration(options = {}) {
-    const { asNew = false } = options;
+    const { asNew = false, name } = options;
     const snapshot = snapshotCurrentParameters();
     if (!snapshot) {
       showToast("Load parameters from a radio before saving.", "error");
       logEvent("Cannot save configuration: parameters not loaded.", "warning");
       return;
     }
-    const nameInput = els.configName ? els.configName.value.trim() : "";
-    if (!nameInput) {
+    const explicitName = typeof name === "string" ? name.trim() : "";
+    const timestamp = new Date().toISOString();
+    const selected = getSelectedConfig();
+
+    if (!asNew) {
+      if (!selected) {
+        showToast("Select a configuration or use Save As.", "error");
+        logEvent("Cannot save configuration: none selected.", "warning");
+        return;
+      }
+      const configName = explicitName || selected.name;
+      logEvent(`Saving configuration "${configName}"...`, "info");
+      selected.name = configName;
+      selected.parameters = snapshot;
+      selected.updatedAt = timestamp;
+      promoteConfigToTop(selected.id);
+      sortConfigsByUpdatedAt();
+      renderConfigOptions();
+      persistConfigs();
+      showToast(`Saved "${selected.name}".`);
+      logEvent(`Configuration "${selected.name}" updated.`, "success");
+      return;
+    }
+
+    if (!explicitName) {
       showToast("Enter a configuration name.", "error");
       logEvent("Cannot save configuration: name is required.", "warning");
       return;
     }
-    const timestamp = new Date().toISOString();
-    logEvent(`Saving configuration "${nameInput}"${asNew ? " as new" : ""}...`, "info");
-
-    if (!asNew) {
-      const existing = getSelectedConfig();
-      if (existing) {
-        existing.name = nameInput;
-        existing.parameters = snapshot;
-        existing.updatedAt = timestamp;
-        promoteConfigToTop(existing.id);
-        sortConfigsByUpdatedAt();
-        renderConfigOptions();
-        persistConfigs();
-        showToast(`Saved "${existing.name}".`);
-        logEvent(`Configuration "${existing.name}" updated.`, "success");
-        return;
-      }
-    }
+    logEvent(`Saving configuration "${explicitName}" as new...`, "info");
 
     const newConfig = {
       id: generateConfigId(),
-      name: nameInput,
+      name: explicitName,
       parameters: snapshot,
       updatedAt: timestamp,
     };
@@ -2269,6 +2692,46 @@ document.addEventListener("DOMContentLoaded", () => {
     persistConfigs();
     showToast(`Saved "${newConfig.name}".`);
     logEvent(`Configuration "${newConfig.name}" saved.`, "success");
+  }
+
+  function getSaveAsModalInstance() {
+    if (!els.configSaveAsModal) {
+      return null;
+    }
+    if (!window.bootstrap || !window.bootstrap.Modal) {
+      return null;
+    }
+    return window.bootstrap.Modal.getOrCreateInstance(els.configSaveAsModal);
+  }
+
+  function openSaveAsModal() {
+    if (!els.configSaveAsName) {
+      return;
+    }
+    const selected = getSelectedConfig();
+    const suggested = selected ? `${selected.name} Copy` : "";
+    els.configSaveAsName.value = suggested;
+    const modal = getSaveAsModalInstance();
+    if (modal) {
+      modal.show();
+    }
+  }
+
+  function confirmSaveAs() {
+    if (!els.configSaveAsName) {
+      return;
+    }
+    const name = els.configSaveAsName.value.trim();
+    if (!name) {
+      showToast("Enter a configuration name.", "error");
+      logEvent("Cannot save configuration: name is required.", "warning");
+      return;
+    }
+    saveConfiguration({ asNew: true, name });
+    const modal = getSaveAsModalInstance();
+    if (modal) {
+      modal.hide();
+    }
   }
 
   async function loadConfigurationToRadio() {
@@ -2488,8 +2951,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (els.connectForm) {
     els.connectForm.addEventListener("submit", connect);
   }
-  if (els.disconnectButton) {
-    els.disconnectButton.addEventListener("click", disconnect);
+  // Dynamic connect/disconnect button handler
+  if (els.connectButton) {
+    els.connectButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (state.connected) {
+        disconnect();
+      } else {
+        connect(event);
+      }
+    });
   }
   if (els.infoRefresh) {
     els.infoRefresh.addEventListener("click", () =>
@@ -2548,6 +3019,7 @@ document.addEventListener("DOMContentLoaded", () => {
         event.stopPropagation();
         const row = cancelButton.closest("tr.parameter-row");
         if (row) {
+          restoreRowOriginalValue(row);
           setRowEditing(row, false);
           row.focus();
         }
@@ -2585,6 +3057,9 @@ document.addEventListener("DOMContentLoaded", () => {
         row.focus();
       }
     });
+
+    els.parameterTableBody.addEventListener("input", handleParameterInputChange);
+    els.parameterTableBody.addEventListener("change", handleParameterInputChange);
   }
 
   if (els.rawSelect) {
@@ -2608,13 +3083,11 @@ document.addEventListener("DOMContentLoaded", () => {
   if (els.configSave) {
     els.configSave.addEventListener("click", () => saveConfiguration());
   }
-  if (els.configSaveNew) {
-    els.configSaveNew.addEventListener("click", () =>
-      saveConfiguration({ asNew: true })
-    );
+  if (els.configSaveAs) {
+    els.configSaveAs.addEventListener("click", openSaveAsModal);
   }
-  if (els.configLoad) {
-    els.configLoad.addEventListener("click", loadConfigurationToRadio);
+  if (els.configSaveAsConfirm) {
+    els.configSaveAsConfirm.addEventListener("click", confirmSaveAs);
   }
   if (els.configDelete) {
     els.configDelete.addEventListener("click", deleteConfiguration);
@@ -2632,6 +3105,22 @@ document.addEventListener("DOMContentLoaded", () => {
     els.configSelect.addEventListener("change", () => {
       const value = els.configSelect.value;
       setSelectedConfig(value || null);
+    });
+  }
+  if (els.configSaveAsModal) {
+    els.configSaveAsModal.addEventListener("shown.bs.modal", () => {
+      if (els.configSaveAsName) {
+        els.configSaveAsName.focus();
+        els.configSaveAsName.select();
+      }
+    });
+  }
+  if (els.configSaveAsName) {
+    els.configSaveAsName.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        confirmSaveAs();
+      }
     });
   }
 

@@ -4,13 +4,57 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SiK Radio Configurator</title>
+    <meta name="description" content="SiK Radio Configurator is a browser-based tool for configuring SiK telemetry radios. Connect via serial, inspect firmware and hardware details, edit parameters, save presets, export configurations, and test changes in Demo Mode. Built for fast, safe radio tuning from any modern browser.">
+    <meta name="keywords" content="SiK radio configurator, telemetry radio configuration, SiK parameters, MAVLink telemetry, ArduPilot radios, radio firmware, serial configuration, Web Serial, telemetry settings, UAV radio tuning, ground station tools, radio presets">
+    <meta name="author" content="B16 LLC">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="theme-color" content="#635bff">
+    <meta name="application-name" content="SiK Radio Configurator">
+    <meta name="apple-mobile-web-app-title" content="SiK Radio Configurator">
+    <meta name="format-detection" content="telephone=no">
+    <meta property="og:title" content="SiK Radio Configurator">
+    <meta property="og:description" content="Configure SiK telemetry radios in the browser. View firmware and hardware info, edit parameters, save presets, and run Demo Mode for safe testing.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="SiK Radio Configurator">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="SiK Radio Configurator">
+    <meta name="twitter:description" content="Browser-based SiK radio configuration with parameter editing, presets, exports, and Demo Mode.">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "SiK Radio Configurator",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "isAccessibleForFree": true,
+        "description": "Browser-based configurator for SiK telemetry radios with live parameter editing, configuration presets, and demo simulation.",
+        "keywords": "SiK radio configurator, telemetry radio configuration, MAVLink telemetry, Web Serial, radio presets",
+        "creator": {
+          "@type": "Organization",
+          "name": "B16 LLC",
+          "url": "https://b16.dev"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        },
+        "featureList": [
+          "Connect to SiK radios over serial",
+          "View firmware and hardware information",
+          "Edit and apply radio parameters",
+          "Save, export, and import configuration presets",
+          "Demo Mode for safe UI testing"
+        ],
+        "inLanguage": "en"
+      }
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap"
-      rel="stylesheet"
-    >
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
   </head>
   <body class="bg-body text-body">
@@ -20,112 +64,89 @@
       </div>
       <div id="global-loading" class="global-loading d-none" role="status" aria-live="assertive">
         <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
-        <span class="ms-3">Working...</span>
+        <span>Working...</span>
       </div>
-      <header class="container-fluid py-4 px-4 px-xl-5 border-bottom border-secondary-subtle">
-        <div class="row g-4 align-items-center">
-          <div class="col">
-            <h1 class="display-6 fw-semibold mb-2">SiK Radio Configurator</h1>
-            <p class="text-secondary mb-0">Connect, inspect, and tune your telemetry radios from any browser.</p>
-          </div>
-          <div class="col-md-auto">
-            <div class="d-flex align-items-center gap-3 flex-wrap justify-content-end">
-              <button type="button" id="theme-toggle" class="btn btn-outline-secondary">
-                <span data-theme-label>Switch Theme</span>
+      <header class="container-fluid">
+        <div class="header-layout">
+          <div class="header-left">
+            <h1>SiK Radio Configurator</h1>
+            <p>Connect, inspect, and tune your telemetry radios from any browser.</p>
+            <div class="header-flags">
+              <div id="debug-banner" class="debug-banner d-none">
+                Demo Mode Active — <a href="?" class="debug-link">Exit Demo</a>
+              </div>
+              <button type="button" id="theme-toggle" class="btn btn-outline-secondary btn-sm theme-toggle-mini" aria-label="Toggle theme">
+                <span class="theme-icon theme-icon-sun" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"></circle>
+                    <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+                  </svg>
+                </span>
+                <span class="theme-icon theme-icon-moon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="img" aria-hidden="true">
+                    <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path>
+                  </svg>
+                </span>
+                <span class="visually-hidden" data-theme-label>Dark Mode</span>
               </button>
-              <div id="connection-status" class="status-card card bg-body border border-secondary-subtle shadow-sm">
-                <div class="card-body">
-                  <div class="status-label text-uppercase text-secondary fw-semibold small">Status</div>
-                  <div class="status-value fs-3 fw-semibold">Disconnected</div>
-                  <div class="status-detail text-secondary">Port: --</div>
+            </div>
+          </div>
+          <div class="header-right">
+            <div class="connection-card card">
+              <div class="card-body p-3">
+                <div id="connection-status" class="connection-status">
+                  <span class="status-label">Status</span>
+                  <span class="status-value">Disconnected</span>
+                </div>
+                <div class="connection-row">
+                  <button type="button" id="choose-port-button" class="btn btn-outline-secondary btn-sm">Choose Port</button>
+                  <select id="baud-rate" class="form-select form-select-sm">
+                    <option value="57600" selected>57600</option>
+                    <option value="115200">115200</option>
+                    <option value="230400">230400</option>
+                    <option value="9600">9600</option>
+                  </select>
+                  <button type="button" id="connect-button" class="btn btn-primary btn-sm">Connect</button>
                 </div>
               </div>
             </div>
           </div>
         </div>
+        <form id="connection-form" class="d-none"></form>
       </header>
-      <main class="container-fluid flex-grow-1 py-4 px-4 px-xl-5">
+      <main class="container-fluid flex-grow-1 py-4">
         <div class="row g-4">
-          <div class="col-xxl-4 col-lg-5">
-            <section class="card h-100 shadow-sm border-secondary-subtle">
-              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent border-secondary-subtle">
-                <h2 class="h4 mb-0">Connection</h2>
-              </div>
-              <div class="card-body">
-                <form id="connection-form" class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label d-flex justify-content-between align-items-center" for="port-select">
-                      Selected Port
-                      <button type="button" id="choose-port-button" class="btn btn-outline-secondary btn-sm">Choose Port</button>
-                    </label>
-                    <input type="text" id="port-select" class="form-control" aria-describedby="port-hint" placeholder="No port selected" value="" readonly>
-                    <div class="form-text" id="port-hint">
-                      Authorize access in your browser when prompted to choose a radio.
-                    </div>
-                  </div>
-                  <div class="col-lg-6">
-                    <label class="form-label" for="baud-rate">Baud Rate</label>
-                    <select id="baud-rate" class="form-select">
-                      <option value="4800">4800</option>
-                      <option value="9600">9600</option>
-                      <option value="19200">19200</option>
-                      <option value="38400">38400</option>
-                      <option value="57600" selected>57600</option>
-                      <option value="115200">115200</option>
-                      <option value="230400">230400</option>
-                      <option value="460800">460800</option>
-                      <option value="921600">921600</option>
-                    </select>
-                  </div>
-                  <div class="col-12">
-                    <div class="d-flex flex-wrap gap-2">
-                      <button type="submit" id="connect-button" class="btn btn-primary flex-fill flex-lg-grow-0">Connect</button>
-                      <button type="button" id="disconnect-button" class="btn btn-outline-danger flex-fill flex-lg-grow-0" disabled>Disconnect</button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </section>
-          </div>
-          <div class="col-xxl-8 col-lg-7">
-            <section class="card h-100 shadow-sm border-secondary-subtle" id="info-card">
-              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2 bg-transparent border-secondary-subtle">
-                <h2 class="h4 mb-0">Radio Information</h2>
+          <div class="col-12 mt-0">
+            <section class="card h-100" id="info-card">
+              <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h2>Radio Information</h2>
                 <button type="button" id="refresh-info" class="btn btn-outline-secondary btn-sm" disabled>Refresh</button>
               </div>
               <div class="card-body">
-                <div class="row g-3" id="info-columns">
-                  <div class="col-sm-6 col-xxl-3">
-                    <h3 class="h6 text-secondary text-uppercase mb-2">Firmware</h3>
-                    <pre id="firmware-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                <div class="info-grid">
+                  <div class="info-item">
+                    <h3>Firmware</h3>
+                    <pre id="firmware-info" class="info-value">--</pre>
                   </div>
-                  <div class="col-sm-6 col-xxl-3">
-                    <h3 class="h6 text-secondary text-uppercase mb-2">Hardware</h3>
-                    <pre id="hardware-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
-                  </div>
-                  <div class="col-sm-6 col-xxl-3">
-                    <h3 class="h6 text-secondary text-uppercase mb-2">Registers</h3>
-                    <pre id="register-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
-                  </div>
-                  <div class="col-sm-6 col-xxl-3">
-                    <h3 class="h6 text-secondary text-uppercase mb-2">Frequencies</h3>
-                    <pre id="frequency-info" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">--</pre>
+                  <div class="info-item">
+                    <h3>Hardware</h3>
+                    <pre id="hardware-info" class="info-value">--</pre>
                   </div>
                 </div>
               </div>
             </section>
           </div>
           <div class="col-12">
-            <section class="card shadow-sm border-secondary-subtle" id="parameters-card">
-              <div class="card-header bg-transparent border-secondary-subtle">
+            <section class="card" id="parameters-card">
+              <div class="card-header">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                   <div>
-                    <h2 class="h4 mb-1">Parameters</h2>
-                    <p class="mb-0 text-secondary">Edit values and commit changes with Save to Flash.</p>
+                    <h2>Parameters</h2>
+                    <p class="mb-0">Edit values and commit changes with Save to Radio.</p>
                   </div>
                   <div class="d-flex flex-wrap gap-2">
                     <button type="button" id="refresh-parameters" class="btn btn-outline-secondary btn-sm" disabled>Reload</button>
-                    <button type="button" id="save-parameters" class="btn btn-primary btn-sm" disabled>Save to Flash</button>
+                    <button type="button" id="save-parameters" class="btn btn-primary btn-sm" disabled>Save to Radio</button>
                   </div>
                 </div>
               </div>
@@ -149,79 +170,80 @@
               </div>
             </section>
           </div>
-          <div class="col-12">
-            <section class="card shadow-sm border-secondary-subtle" id="configurations-card">
-              <div class="card-header bg-transparent border-secondary-subtle">
-                <h2 class="h4 mb-0">Configurations</h2>
+                    <div class="col-12">
+            <section class="card collapsible-card" id="configurations-card">
+              <div class="card-header collapsible-header" data-bs-toggle="collapse" data-bs-target="#configurations-body" aria-expanded="false">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="collapse-icon">▶</span>
+                  <h2 class="mb-0">Configurations</h2>
+                </div>
+                <span class="text-secondary small">Save and load radio parameter presets</span>
               </div>
-              <div class="card-body">
-                <div class="row g-3 align-items-end">
-                  <div class="col-lg-4">
-                    <label class="form-label" for="config-name">Configuration Name</label>
-                    <input type="text" id="config-name" class="form-control" placeholder="My Field Setup">
-                  </div>
-                  <div class="col-lg-4">
-                    <label class="form-label" for="config-select">Saved Configurations</label>
-                    <select id="config-select" class="form-select" size="4" aria-label="Saved configurations"></select>
-                  </div>
-                  <div class="col-lg-4">
-                    <div class="d-flex flex-wrap gap-2">
-                      <button type="button" id="save-config" class="btn btn-primary flex-fill">Save to Cache</button>
-                      <button type="button" id="save-config-new" class="btn btn-outline-primary flex-fill">Save As New</button>
-                      <button type="button" id="load-config" class="btn btn-outline-secondary flex-fill" disabled>Load to Radio</button>
+              <div class="collapse" id="configurations-body">
+                <div class="card-body">
+                  <div class="config-layout">
+                    <div class="config-list-section">
+                      <label class="form-label" for="config-select">Saved Configurations</label>
+                      <select id="config-select" class="form-select" size="3" aria-label="Saved configurations"></select>
                     </div>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                      <button type="button" id="download-config" class="btn btn-outline-primary flex-fill" disabled>Download JSON</button>
-                      <button type="button" id="upload-config" class="btn btn-outline-secondary flex-fill">Upload JSON</button>
+                    <div class="config-actions-section">
+                      <div class="config-btn-group">
+                        <button type="button" id="save-config" class="btn btn-primary btn-sm">Save</button>
+                        <button type="button" id="save-config-as" class="btn btn-outline-primary btn-sm">Save As</button>
+                        <button type="button" id="download-config" class="btn btn-outline-secondary btn-sm" disabled>Export</button>
+                        <button type="button" id="upload-config" class="btn btn-outline-secondary btn-sm">Import</button>
+                        <button type="button" id="delete-config" class="btn btn-outline-danger btn-sm" disabled>Delete</button>
+                      </div>
+                      <span class="text-secondary small mt-2 d-block">Stored locally in this browser</span>
                     </div>
                   </div>
+                  <input type="file" id="upload-config-input" accept="application/json" class="d-none">
                 </div>
-                <div class="d-flex flex-wrap gap-2 mt-3">
-                  <button type="button" id="delete-config" class="btn btn-outline-danger btn-sm" disabled>Delete Selected</button>
-                  <span class="text-secondary small">Configurations are stored locally in this browser.</span>
-                </div>
-                <input type="file" id="upload-config-input" accept="application/json" class="d-none">
               </div>
             </section>
           </div>
           <div class="col-12">
-            <section class="card shadow-sm border-secondary-subtle" id="actions-card">
-              <div class="card-header bg-transparent border-secondary-subtle">
-                <h2 class="h4 mb-0">Utilities</h2>
+            <section class="card collapsible-card" id="utilities-card">
+              <div class="card-header collapsible-header" data-bs-toggle="collapse" data-bs-target="#utilities-body" aria-expanded="false">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="collapse-icon">▶</span>
+                  <h2 class="mb-0">Utilities</h2>
+                </div>
+                <span class="text-secondary small">Reboot radio, send raw commands, and more</span>
               </div>
-              <div class="card-body">
-                <div class="row g-4">
-                  <div class="col-lg-4">
-                    <div class="utility-tile rounded-4 border border-secondary-subtle h-100 p-4">
-                      <h3 class="h5 mb-2">Radio Reboot</h3>
-                      <p class="text-secondary mb-4">Reboot the radio to apply pending changes on both ends.</p>
-                      <button type="button" id="reboot-button" class="btn btn-outline-danger" disabled>Reboot Radio</button>
+              <div class="collapse" id="utilities-body">
+                <div class="card-body">
+                  <div class="utility-section mb-4">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                      <div>
+                        <h3 class="mb-1">Radio Reboot</h3>
+                        <p class="mb-0 text-secondary small">Reboot the radio to apply saved changes.</p>
+                      </div>
+                      <button type="button" id="reboot-button" class="btn btn-outline-danger btn-sm" disabled>Reboot Radio</button>
                     </div>
                   </div>
-                  <div class="col-lg-8">
-                    <div class="utility-tile rounded-4 border border-secondary-subtle h-100 p-4">
-                      <h3 class="h5 mb-2">Raw Command</h3>
-                      <p class="text-secondary mb-4">Send an advanced AT command and review the raw response.</p>
-                      <form id="raw-command-form" class="d-flex flex-column gap-3">
-                        <div class="row g-3">
-                          <div class="col-md-6">
-                            <label class="form-label" for="raw-command-select">Command Preset</label>
-                            <select id="raw-command-select" class="form-select" disabled>
-                              <option>Loading presets...</option>
-                            </select>
-                            <div class="form-text mt-2" id="raw-command-description">Select a command to view its description.</div>
-                          </div>
-                          <div class="col-md-6">
-                            <label class="form-label" for="raw-command">Command</label>
-                            <div class="raw-input-row">
-                              <input type="text" id="raw-command" class="form-control" placeholder="ATI5" autocomplete="off" disabled>
-                              <button type="submit" class="btn btn-outline-secondary" id="raw-command-submit" disabled>Send</button>
-                            </div>
+                  <hr class="my-3">
+                  <div class="utility-section">
+                    <h3 class="mb-3">Raw Command</h3>
+                    <form id="raw-command-form" class="d-flex flex-column gap-3">
+                      <div class="row g-3">
+                        <div class="col-md-6">
+                          <label class="form-label" for="raw-command-select">Command Preset</label>
+                          <select id="raw-command-select" class="form-select" disabled>
+                            <option>Loading presets...</option>
+                          </select>
+                          <div class="form-text mt-2" id="raw-command-description">Select a command to view its description.</div>
+                        </div>
+                        <div class="col-md-6">
+                          <label class="form-label" for="raw-command">Command</label>
+                          <div class="raw-input-row">
+                            <input type="text" id="raw-command" class="form-control" placeholder="ATI5" autocomplete="off" disabled>
+                            <button type="submit" class="btn btn-outline-secondary" id="raw-command-submit" disabled>Send</button>
                           </div>
                         </div>
-                        <pre id="raw-command-response" class="app-block border border-secondary-subtle rounded-3 p-3 mb-0">Response will appear here.</pre>
-                      </form>
-                    </div>
+                      </div>
+                      <pre id="raw-command-response" class="app-block mb-0">Response will appear here.</pre>
+                    </form>
                   </div>
                 </div>
               </div>
@@ -229,14 +251,14 @@
           </div>
         </div>
       </main>
-      <footer class="container-fluid py-4 px-4 px-xl-5 border-top border-secondary-subtle text-center text-secondary small">
-        <p class="mb-2">Need both radios updated? Configure each one in turn, save to flash, and reboot.</p>
-        <p class="mb-2">
-          <a href="https://www.venmo.com/u/alexbennett-b16" target="_blank" rel="noopener noreferrer" class="text-decoration-none">Buy me a coffee 🍵</a>
-        </p>
-        <p class="mb-0">
+      <footer class="container-fluid text-center">
+        <h4>
+          <a href="https://www.venmo.com/u/alexbennett-b16" target="_blank" rel="noopener noreferrer">Buy me a coffee ☕</a>
+        </h4>
+        <p>
           © 2026 <a href="https://b16.dev" target="_blank" rel="noopener noreferrer">B16 LLC</a> · 
-          <a href="https://github.com/alexbennett/SiK-Radio-Configurator" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a>
+          <a href="https://github.com/alexbennett/SiK-Radio-Configurator" target="_blank" rel="noopener noreferrer">Open Source on GitHub</a> · 
+          <a href="?debug" class="demo-link">Try Demo Mode</a>
         </p>
       </footer>
     </div>
@@ -250,6 +272,25 @@
       </div>
       <div class="activity-log-body" id="activity-log-body">
         <ul class="activity-log-list" id="activity-log-list"></ul>
+      </div>
+    </div>
+    <div class="modal fade" id="config-saveas-modal" tabindex="-1" aria-labelledby="config-saveas-title" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="config-saveas-title">Save Configuration As</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label" for="config-saveas-name">Configuration Name</label>
+            <input type="text" id="config-saveas-name" class="form-control" placeholder="Field Setup Copy">
+            <div class="form-text">Stored locally in this browser</div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" id="config-saveas-confirm" class="btn btn-primary">Save As</button>
+          </div>
+        </div>
       </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
