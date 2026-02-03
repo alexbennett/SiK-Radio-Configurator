@@ -254,10 +254,10 @@ export function createConnectionController({
 
     if (connected && !state.parametersLoaded && !state.loadingParameters) {
       if (loadInfo) {
-        loadInfo({ silent: true });
+        loadInfo({ button: els.infoRefresh, label: "Refreshing..." });
       }
       if (loadParameters) {
-        loadParameters({ silent: true });
+        loadParameters({ button: els.parametersRefresh, label: "Refreshing..." });
       }
     }
   }

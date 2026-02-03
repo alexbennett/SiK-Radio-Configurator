@@ -40,7 +40,7 @@ echo ""
 
 # Deploy to Firebase
 echo "🚀 Deploying to Firebase..."
-npx firebase deploy --only hosting
+firebase deploy --only hosting
 
 echo ""
 echo "✨ Deployment complete!"

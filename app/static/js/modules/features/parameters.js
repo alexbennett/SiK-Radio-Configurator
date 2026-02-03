@@ -146,7 +146,8 @@ export function createParametersController({
     if (!valueDisplay) {
       return;
     }
-    const existing = valueDisplay.querySelector(".unsaved-badge");
+    const badgeHost = valueDisplay.querySelector(".value-main") || valueDisplay;
+    const existing = badgeHost.querySelector(".unsaved-badge");
     if (unsaved) {
       if (existing) {
         return;
@@ -154,7 +155,7 @@ export function createParametersController({
       const badge = document.createElement("span");
       badge.className = "unsaved-badge";
       badge.textContent = "Unsaved";
-      valueDisplay.appendChild(badge);
+      badgeHost.appendChild(badge);
     } else if (existing) {
       existing.remove();
     }
@@ -415,10 +416,13 @@ export function createParametersController({
       currentCell.className = "parameter-value-cell";
       const valueDisplay = document.createElement("div");
       valueDisplay.className = "value-display";
+      const valueMain = document.createElement("div");
+      valueMain.className = "value-main";
       const valueChip = document.createElement("span");
       valueChip.className = "value-chip";
       valueChip.textContent = param.value != null ? String(param.value) : "?";
-      valueDisplay.appendChild(valueChip);
+      valueMain.appendChild(valueChip);
+      valueDisplay.appendChild(valueMain);
       const human = param.human_readable;
       if (human && human !== String(param.value)) {
         const humanHint = document.createElement("span");
@@ -525,10 +529,13 @@ export function createParametersController({
     const valueDisplay = row.querySelector(".value-display");
     if (valueDisplay) {
       valueDisplay.innerHTML = "";
+      const valueMain = document.createElement("div");
+      valueMain.className = "value-main";
       const valueChip = document.createElement("span");
       valueChip.className = "value-chip";
       valueChip.textContent = parameter.value != null ? String(parameter.value) : "?";
-      valueDisplay.appendChild(valueChip);
+      valueMain.appendChild(valueChip);
+      valueDisplay.appendChild(valueMain);
       if (
         parameter.human_readable &&
         parameter.human_readable !== parameter.value
@@ -645,6 +652,9 @@ export function createParametersController({
         "error"
       );
       showToast(error.message, "error");
+      if (!Array.isArray(state.parameters) || !state.parameters.length) {
+        clearParametersTable("Failed to load parameters. Click Reload to try again.");
+      }
     } finally {
       state.loadingParameters = false;
       if (updateConfigButtonsState) {

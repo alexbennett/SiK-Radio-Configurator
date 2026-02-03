@@ -13,12 +13,18 @@ export function createUtilitiesController({
     if (!Array.isArray(state.parameters) || !state.parameters.length) {
       return [];
     }
-    return state.parameters.map((param) => ({
-      command: `ATS${param.code}?`,
-      description: `Read ${
-        (param.definition && param.definition.name) || `parameter ${param.code}`
-      }`,
-    }));
+    return state.parameters.map((param) => {
+      const rawCode = String(param.code || "").trim();
+      const normalized = rawCode.toUpperCase().startsWith("S")
+        ? rawCode.slice(1)
+        : rawCode;
+      return {
+        command: `ATS${normalized}?`,
+        description: `Read ${
+          (param.definition && param.definition.name) || `parameter ${rawCode || normalized}`
+        }`,
+      };
+    });
   }
 
   function refreshRawCommandOptions() {

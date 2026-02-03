@@ -764,6 +764,13 @@ select.form-select-sm:not([size]):not([multiple]) {
   gap: var(--space-xs);
 }
 
+.parameter-row .value-main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
 .param-name {
   font-family: var(--font-mono);
   font-weight: 600;
@@ -1102,6 +1109,7 @@ select.form-select-sm:not([size]):not([multiple]) {
   border-color: var(--accent-primary);
   border-right-color: transparent;
 }
+
 
 /* ============================================
    Footer - Minimal & Clean

@@ -1,3 +1,5 @@
+import { PARAMETER_DEFINITIONS } from "../parameterDefinitions.js";
+
 export class WebSerialTransport {
   constructor(httpFetchJSON) {
     this.httpFetchJSON = httpFetchJSON;
@@ -20,8 +22,8 @@ export class WebSerialTransport {
     if (!path.startsWith("/api/")) {
       return false;
     }
-    if (path === "/api/parameter-definitions") {
-      return false;
+    if (method === "GET" && path === "/api/parameter-definitions") {
+      return true;
     }
     if (
       method === "GET" &&
@@ -55,6 +57,10 @@ export class WebSerialTransport {
 
     if (method === "GET" && path === "/api/status") {
       return { status: this.status() };
+    }
+    if (method === "GET" && path === "/api/parameter-definitions") {
+      await this._ensureDefinitions();
+      return { definitions: this.definitions || {} };
     }
 
     return this._queue(async () => {
@@ -262,10 +268,27 @@ export class WebSerialTransport {
       if (!line || this.stopTokens.includes(line)) {
         continue;
       }
-      const separatorIndex = line.indexOf(":");
+      const trimmed = line.trim();
+      const separatorIndex = trimmed.indexOf(":");
       if (separatorIndex !== -1) {
-        rawValue = line.slice(separatorIndex + 1).trim();
+        rawValue = trimmed.slice(separatorIndex + 1).trim();
         value = this.extractValueToken(rawValue);
+        break;
+      }
+      if (trimmed.includes("=")) {
+        rawValue = trimmed;
+        value = this.extractValueToken(rawValue);
+        break;
+      }
+      const looseMatch = trimmed.match(/^S\\d+\\s+(.+)$/i);
+      if (looseMatch && looseMatch[1]) {
+        rawValue = looseMatch[1].trim();
+        value = this.extractValueToken(rawValue);
+        break;
+      }
+      if (/^[+-]?\\d+(?:\\.\\d+)?$/.test(trimmed)) {
+        rawValue = trimmed;
+        value = trimmed;
         break;
       }
     }
@@ -290,7 +313,21 @@ export class WebSerialTransport {
     if (!this._didCommandSucceed(response)) {
       throw new Error("Radio rejected the parameter update.");
     }
-    return this.queryParameter(normalized);
+    try {
+      return await this.queryParameter(normalized);
+    } catch (_error) {
+      await this._ensureDefinitions();
+      const code = `S${normalized}`;
+      const definition = (this.definitions && this.definitions[code]) || {};
+      const stringValue = value != null ? String(value) : "";
+      return {
+        code,
+        value: stringValue,
+        raw: definition && definition.name ? `${definition.name}=${stringValue}` : stringValue,
+        human_readable: this.interpretValue(code, stringValue),
+        definition,
+      };
+    }
   }
 
   async saveParameters() {
@@ -322,11 +359,14 @@ export class WebSerialTransport {
     if (this.definitions) {
       return;
     }
+    const fallback = PARAMETER_DEFINITIONS || {};
     try {
       const payload = await this.httpFetchJSON("/api/parameter-definitions");
-      this.definitions = payload && payload.definitions ? payload.definitions : {};
+      const definitions = payload && payload.definitions ? payload.definitions : null;
+      this.definitions =
+        definitions && Object.keys(definitions).length ? definitions : fallback;
     } catch (_error) {
-      this.definitions = {};
+      this.definitions = fallback;
     }
   }
 
