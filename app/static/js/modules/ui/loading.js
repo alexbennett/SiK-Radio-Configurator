@@ -23,7 +23,7 @@ export function createLoadingController(els, state) {
       const text = label || button.textContent.trim() || "Working...";
       const spinner =
         '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-      button.innerHTML = `${spinner}<span class="ms-2">${text}</span>`;
+      button.innerHTML = `${spinner}<span>${text}</span>`;
       button.disabled = true;
       button.classList.add("loading");
     } else {
